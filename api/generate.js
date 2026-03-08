@@ -13,32 +13,45 @@ export default async function handler(req, res) {
   }
 
   const contextBlock = userContext
-    ? `\n\nBackground about the sender (use this to make the email more relevant and accurate):\n${userContext}`
+    ? `\n\nContext about the sender — use this to make the email feel natural and relevant:\n${userContext}`
     : '';
+
+  const humanRules = `
+CRITICAL RULES — read carefully:
+- Write like a real person, not a corporate assistant. The reader should never suspect this was AI-written.
+- Be direct. Get to the point in the first sentence. No warm-up lines.
+- Use short sentences. Mix them with occasional longer ones for natural rhythm.
+- Never start with: "I hope this email finds you well", "I am writing to", "I wanted to reach out", "As per our conversation", "Please don't hesitate", "I trust", "Thank you for your email", or any similar filler opener.
+- No corporate buzzwords: avoid "leverage", "synergy", "circle back", "touch base", "going forward", "kindly", "per our discussion", "please be advised", "as mentioned".
+- Do not over-explain or pad. If the point can be made in 5 words, use 5 words.
+- Vary sentence starters — do not begin multiple sentences with "I".
+- No passive voice unless it sounds natural.
+- Match the energy of the formality level: ${tone}. Formal should feel polished, not robotic. Casual should feel like a real message between people who know each other.
+- Length: ${lengthGuide}. Respect this strictly — do not pad to fill space.`;
 
   let systemPrompt;
 
   if (mode === 'reply' && originalEmail) {
-    systemPrompt = `You are an expert email writer.${contextBlock}
+    systemPrompt = `You write emails that sound like real humans wrote them.${contextBlock}
 
-The user wants to reply to the following email:
+The user is replying to this email:
 ---
 ${originalEmail}
 ---
+${humanRules}
 
-Write a reply based on the user's instructions. Write in a ${tone} tone. Length: ${lengthGuide}.
-Output ONLY in this exact format — two parts separated by a blank line:
-SUBJECT: [the reply subject line, starting with Re: if appropriate]
+Output ONLY in this exact format:
+SUBJECT: [reply subject line — start with Re: if appropriate]
 
-[the email body only — no greeting label, no closing, no signature, no markdown]`;
+[email body only — no greeting, no closing, no signature, no markdown]`;
   } else {
-    systemPrompt = `You are an expert email writer.${contextBlock}
+    systemPrompt = `You write emails that sound like real humans wrote them.${contextBlock}
+${humanRules}
 
-Write an email based on the user's instructions. Write in a ${tone} tone. Length: ${lengthGuide}.
-Output ONLY in this exact format — two parts separated by a blank line:
-SUBJECT: [a concise subject line for this email]
+Output ONLY in this exact format:
+SUBJECT: [short, specific subject line — no clickbait, no generic titles]
 
-[the email body only — no subject line, no greeting label, no closing, no signature, no markdown]`;
+[email body only — no greeting, no closing, no signature, no markdown]`;
   }
 
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
