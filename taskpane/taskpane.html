@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Email Writer</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:           #f5f4f1;
+      --surface:      #ffffff;
+      --surface-2:    #faf9f7;
+      --ink:          #1c1917;
+      --ink-2:        #44403c;
+      --muted:        #78716c;
+      --border:       #e7e5e4;
+      --border-2:     #d6d3d1;
+      --accent:       #b8960c;
+      --accent-bg:    #fef9e7;
+      --success:      #16a34a;
+      --success-bg:   #f0fdf4;
+      --success-bdr:  #bbf7d0;
+      --error:        #dc2626;
+      --error-bg:     #fef2f2;
+      --error-bdr:    #fecaca;
+      --shadow-sm:    0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+      --shadow:       0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+      --radius:       10px;
+      --radius-sm:    6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px 10px;
+    }
+    .header-top {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+    }
+    .header-brand { display: flex; align-items: center; gap: 9px; }
+    .logo {
+      width: 28px; height: 28px; background: var(--ink);
+      border-radius: 7px; display: grid; place-items: center; flex-shrink: 0;
+    }
+    .logo svg { width: 15px; height: 15px; }
+    .brand-name { font-size: 14px; font-weight: 700; letter-spacing: -0.3px; }
+    .brand-sub  { font-size: 10px; color: var(--muted); margin-top: 1px; }
+    #changeKeyBtn {
+      font-size: 11px; font-weight: 500; color: var(--muted);
+      background: none; border: 1px solid var(--border); border-radius: 5px;
+      padding: 3px 9px; cursor: pointer; transition: all .15s;
+    }
+    #changeKeyBtn:hover { color: var(--ink); border-color: var(--border-2); }
+
+    /* Mode tabs */
+    .mode-tabs {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 3px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 3px;
+    }
+    .mode-tab {
+      font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500;
+      color: var(--muted); background: transparent; border: none;
+      border-radius: 4px; padding: 7px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      transition: all .15s;
+    }
+    .mode-tab.active { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: var(--shadow-sm); }
+
+    /* ── MAIN ── */
+    main { padding: 14px 16px; display: flex; flex-direction: column; gap: 11px; }
+
+    /* ── API SETUP ── */
+    #apiSetup {
+      background: var(--accent-bg); border: 1.5px solid #f0d870;
+      border-radius: var(--radius); padding: 14px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .setup-title { font-size: 12px; font-weight: 600; color: #7a5900; display: flex; align-items: center; gap: 6px; }
+    #apiKeyInput {
+      width: 100%; font-family: 'Inter', sans-serif; font-size: 12px;
+      border: 1px solid var(--border-2); border-radius: var(--radius-sm);
+      padding: 8px 10px; background: white; color: var(--ink);
+    }
+    #apiKeyInput:focus { outline: none; border-color: var(--accent); }
+    #apiKeyInput::placeholder { color: #c0b8b0; }
+    #saveKeyBtn {
+      font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+      color: #7a5900; background: #f5e060; border: 1px solid #d4a800;
+      border-radius: var(--radius-sm); padding: 7px 16px;
+      cursor: pointer; align-self: flex-start; transition: background .13s;
+    }
+    #saveKeyBtn:hover { background: #ecd840; }
+    .key-note { font-size: 10.5px; color: var(--muted); line-height: 1.5; }
+    .key-note a { color: var(--accent); }
+
+    /* ── REPLY SECTION ── */
+    #replySection { display: none; flex-direction: column; gap: 8px; }
+    #readEmailBtn {
+      font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+      color: var(--ink-2); background: var(--surface);
+      border: 1.5px dashed var(--border-2); border-radius: var(--radius-sm);
+      padding: 10px 14px; cursor: pointer; width: 100%;
+      display: flex; align-items: center; gap: 7px; transition: all .15s;
+    }
+    #readEmailBtn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+    #originalEmailBox {
+      background: var(--surface); border: 1px solid var(--border);
+      border-left: 3px solid var(--border-2); border-radius: var(--radius-sm);
+      padding: 10px 12px; font-size: 11.5px; color: var(--muted);
+      line-height: 1.55; max-height: 90px; overflow-y: auto;
+      white-space: pre-wrap; display: none;
+    }
+
+    /* ── COMPOSE CARD ── */
+    .compose-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden;
+    }
+    .recipient-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+    }
+    .to-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--muted); flex-shrink: 0;
+    }
+    #recipientInput {
+      flex: 1; font-family: 'Inter', sans-serif; font-size: 12.5px;
+      color: var(--ink); background: none; border: none; outline: none;
+    }
+    #recipientInput::placeholder { color: #c8c4bf; }
+    .prompt-area { padding: 11px 14px 8px; }
+    .prompt-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--muted); margin-bottom: 7px;
+    }
+    #promptInput {
+      width: 100%; font-family: 'Inter', sans-serif; font-size: 13px;
+      color: var(--ink); background: none; border: none; outline: none;
+      resize: none; min-height: 88px; line-height: 1.65;
+    }
+    #promptInput::placeholder { color: #c8c4bf; }
+    .quick-row {
+      padding: 8px 10px 10px; border-top: 1px solid var(--border);
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+    }
+    .quick-chip {
+      font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 500;
+      color: var(--ink-2); background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 7px 10px; cursor: pointer;
+      text-align: center; transition: all .12s;
+    }
+    .quick-chip:hover { background: #ece9e4; border-color: var(--border-2); }
+
+    /* ── OPTIONS ROW ── */
+    .options-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
+    .opt-group { display: flex; flex-direction: column; gap: 5px; }
+    .opt-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+    .seg-ctrl {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 2px; gap: 2px;
+    }
+    .seg-btn {
+      font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 500;
+      color: var(--muted); background: transparent; border: none;
+      border-radius: 4px; padding: 5px 2px; cursor: pointer; transition: all .15s;
+    }
+    .seg-btn.active { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: var(--shadow-sm); }
+    .opt-select {
+      font-family: 'Inter', sans-serif; font-size: 12px; color: var(--ink);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 6px 26px 6px 9px;
+      appearance: none; cursor: pointer; width: 100%;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2378716c'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 9px center;
+    }
+    .opt-select:focus { outline: none; border-color: var(--accent); }
+
+    /* ── ACCORDIONS ── */
+    .accordion {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .accordion-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 14px; cursor: pointer; user-select: none; transition: background .13s;
+    }
+    .accordion-header:hover { background: var(--bg); }
+    .acc-title { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+    .saved-dot { width: 6px; height: 6px; background: var(--success); border-radius: 50%; opacity: 0; transition: opacity .2s; }
+    .saved-dot.on { opacity: 1; }
+    .acc-chevron { font-size: 9px; color: var(--muted); transition: transform .2s; }
+    .acc-chevron.open { transform: rotate(180deg); }
+    .accordion-body { display: none; flex-direction: column; gap: 10px; padding: 0 14px 14px; border-top: 1px solid var(--border); }
+    .accordion-body.open { display: flex; }
+    .acc-desc { font-size: 11px; color: var(--muted); line-height: 1.55; margin-top: 10px; }
+    .acc-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); display: block; margin-bottom: 5px; }
+    .acc-textarea {
+      width: 100%; font-family: 'Inter', sans-serif; font-size: 12px; color: var(--ink);
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 9px 11px; resize: none; min-height: 68px; line-height: 1.55; transition: all .15s;
+    }
+    .acc-textarea:focus { outline: none; border-color: var(--accent); background: white; }
+    .acc-textarea::placeholder { color: #c8c4bf; }
+    .acc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+    .acc-select {
+      font-family: 'Inter', sans-serif; font-size: 12px; color: var(--ink);
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 6px 24px 6px 9px; appearance: none; cursor: pointer; width: 100%;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2378716c'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
+    }
+    .acc-select:focus { outline: none; border-color: var(--accent); }
+    .acc-save-btn {
+      font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 600;
+      color: var(--accent); background: var(--accent-bg); border: 1px solid #f0d870;
+      border-radius: var(--radius-sm); padding: 6px 14px; cursor: pointer;
+      align-self: flex-start; transition: background .13s;
+    }
+    .acc-save-btn:hover { background: #fef3c7; }
+
+    /* ── GENERATE BUTTON ── */
+    #generateBtn {
+      width: 100%; font-family: 'Inter', sans-serif; font-size: 14px;
+      font-weight: 700; letter-spacing: -0.2px; color: #fff;
+      background: linear-gradient(135deg, #1c1917 0%, #292524 60%, #1c1917 100%);
+      border: none; border-radius: var(--radius); padding: 14px;
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: opacity .15s, transform .1s;
+    }
+    #generateBtn::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.08) 50%, transparent 100%);
+      transform: translateX(-100%);
+      transition: transform .5s ease;
+    }
+    #generateBtn:hover::after { transform: translateX(100%); }
+    #generateBtn:hover { opacity: .9; }
+    #generateBtn:active { transform: scale(.98); }
+    #generateBtn:disabled { background: #d6d3d1; cursor: not-allowed; transform: none; }
+    #generateBtn:disabled::after { display: none; }
+    .gen-inner { display: flex; align-items: center; justify-content: center; gap: 8px; position: relative; z-index: 1; }
+    .gen-spinner {
+      width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin .7s linear infinite; display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #generateBtn.loading .gen-spinner { display: block; }
+    #generateBtn.loading .gen-text { opacity: .7; }
+
+    /* ── STATUS TOAST ── */
+    #status {
+      font-size: 12px; font-weight: 500; text-align: center;
+      padding: 8px 12px; border-radius: var(--radius-sm); display: none;
+    }
+    #status.success { display: block; background: var(--success-bg); color: var(--success); border: 1px solid var(--success-bdr); }
+    #status.error   { display: block; background: var(--error-bg);   color: var(--error);   border: 1px solid var(--error-bdr); }
+
+    /* ── RESULT CARD ── */
+    #resultCard {
+      display: none; flex-direction: column;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+    }
+    .result-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface-2);
+    }
+    .result-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+    .result-actions { display: flex; gap: 3px; }
+    .icon-btn {
+      font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 500;
+      color: var(--muted); background: none; border: 1px solid transparent;
+      border-radius: 5px; padding: 3px 8px; cursor: pointer; transition: all .13s;
+    }
+    .icon-btn:hover { color: var(--ink); background: var(--bg); border-color: var(--border); }
+    #subjectRow {
+      display: none; align-items: center; gap: 8px;
+      padding: 9px 14px; border-bottom: 1px solid var(--border);
+      background: #fffbeb;
+    }
+    .subj-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent); flex-shrink: 0; }
+    #subjectText { font-size: 12px; font-weight: 500; color: var(--ink); flex: 1; line-height: 1.4; }
+    #setSubjectBtn {
+      font-family: 'Inter', sans-serif; font-size: 10.5px; font-weight: 600;
+      color: var(--accent); background: white; border: 1px solid #f0d870;
+      border-radius: 5px; padding: 3px 9px; cursor: pointer; flex-shrink: 0; transition: background .13s;
+    }
+    #setSubjectBtn:hover { background: var(--accent-bg); }
+    #previewBox {
+      padding: 14px; font-size: 12.5px; line-height: 1.7;
+      white-space: pre-wrap; color: var(--ink);
+      max-height: 200px; overflow-y: auto; border-bottom: 1px solid var(--border);
+    }
+    #previewBox::-webkit-scrollbar { width: 4px; }
+    #previewBox::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    #insertBtn {
+      width: 100%; font-family: 'Inter', sans-serif;
+      font-size: 13px; font-weight: 700; color: #15803d;
+      background: var(--success-bg); border: none;
+      border-top: 1px solid var(--success-bdr); border-radius: 0;
+      padding: 13px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      transition: background .13s;
+    }
+    #insertBtn:hover { background: #dcfce7; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="header-brand">
+      <div class="logo">
+        <svg viewBox="0 0 16 16" fill="none">
+          <path d="M2 12L5.5 4L8 9L10.5 6.5L14 12" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="8" cy="3" r="1.2" fill="#c8a850"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">AI Email Writer</div>
+        <div class="brand-sub">Describe → Generate → Insert</div>
+      </div>
+    </div>
+    <button id="changeKeyBtn">API key</button>
+  </div>
+  <div class="mode-tabs">
+    <button class="mode-tab active" data-mode="compose">✏ Compose</button>
+    <button class="mode-tab" data-mode="reply">↩ Reply to email</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- API Key Setup -->
+  <div id="apiSetup">
+    <div class="setup-title">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#c8a850" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+      One-time setup — Enter your Groq API key
+    </div>
+    <input type="password" id="apiKeyInput" placeholder="gsk_…"/>
+    <button id="saveKeyBtn">Save Key</button>
+    <p class="key-note">Free key at <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a></p>
+  </div>
+
+  <!-- Reply: read original email -->
+  <div id="replySection">
+    <button id="readEmailBtn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 9l10 6 10-6"/></svg>
+      Read original email
+    </button>
+    <div id="originalEmailBox"></div>
+  </div>
+
+  <!-- Compose card -->
+  <div class="compose-card">
+    <div class="recipient-row">
+      <span class="to-label">To</span>
+      <input type="text" id="recipientInput" placeholder="Recipient name (optional — for greeting)"/>
+    </div>
+    <div class="prompt-area">
+      <div class="prompt-label" id="promptLabel">What do you want to say?</div>
+      <textarea id="promptInput" placeholder="e.g. Decline a meeting on Friday, say I'm traveling but suggest next Monday instead…" rows="4"></textarea>
+    </div>
+    <div class="quick-row">
+      <button class="quick-chip" data-prompt="Follow up on my previous email and ask for an update">Follow-up</button>
+      <button class="quick-chip" data-prompt="Politely decline this meeting, offer to reschedule">Decline meeting</button>
+      <button class="quick-chip" data-prompt="Thank them and say I'll review shortly">Thank & ack</button>
+      <button class="quick-chip" data-prompt="Introduce myself and explain the purpose of this email">Intro email</button>
+      <button class="quick-chip" data-prompt="Apologize for the delay and provide a brief status update">Apology</button>
+      <button class="quick-chip" data-prompt="Ask for a meeting next week to discuss this topic">Request meeting</button>
+    </div>
+  </div>
+
+  <!-- Options -->
+  <div class="options-row">
+    <div class="opt-group">
+      <div class="opt-label">Formality</div>
+      <div class="seg-ctrl" id="formalityToggle">
+        <button class="seg-btn" data-formality="formal">Formal</button>
+        <button class="seg-btn active" data-formality="semi-formal">Semi</button>
+        <button class="seg-btn" data-formality="informal">Casual</button>
+      </div>
+    </div>
+    <div class="opt-group">
+      <div class="opt-label">Length</div>
+      <select class="opt-select" id="lengthSelect">
+        <option value="short">Short (2–3 lines)</option>
+        <option value="medium" selected>Medium</option>
+        <option value="long">Long (detailed)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- About you accordion -->
+  <div class="accordion">
+    <div class="accordion-header" id="ctxToggle">
+      <div class="acc-title">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        About you
+        <span class="saved-dot" id="ctxDot"></span>
+      </div>
+      <span class="acc-chevron" id="ctxChevron">▼</span>
+    </div>
+    <div class="accordion-body" id="ctxBody">
+      <p class="acc-desc">Your role and background — the AI uses this to write more relevant emails.</p>
+      <textarea class="acc-textarea" id="contextInput" placeholder="e.g. I'm a computer engineering student at AUB. I usually email professors about assignments and academic matters."></textarea>
+      <button class="acc-save-btn" id="saveCtxBtn">Save</button>
+    </div>
+  </div>
+
+  <!-- Signature accordion -->
+  <div class="accordion">
+    <div class="accordion-header" id="sigToggle">
+      <div class="acc-title">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 17H4M20 12H4M12 7H4"/></svg>
+        Signature &amp; Closing
+        <span class="saved-dot" id="sigDot"></span>
+      </div>
+      <span class="acc-chevron" id="sigChevron">▼</span>
+    </div>
+    <div class="accordion-body" id="sigBody">
+      <div class="acc-row" style="margin-top:10px;">
+        <div>
+          <span class="acc-label">Closing</span>
+          <select class="acc-select" id="closingSelect">
+            <option>Best regards</option>
+            <option>Kind regards</option>
+            <option>Sincerely</option>
+            <option>Warm regards</option>
+            <option>Thank you</option>
+            <option>Yours truly</option>
+            <option>Respectfully</option>
+            <option>Cheers</option>
+          </select>
+        </div>
+        <div></div>
+      </div>
+      <div>
+        <span class="acc-label">Your signature</span>
+        <textarea class="acc-textarea" id="signatureInput" style="min-height:55px;" placeholder="e.g. John Smith&#10;Software Engineer"></textarea>
+      </div>
+      <button class="acc-save-btn" id="saveSigBtn">Save</button>
+    </div>
+  </div>
+
+  <!-- Generate -->
+  <button id="generateBtn" disabled>
+    <div class="gen-inner">
+      <div class="gen-spinner"></div>
+      <span class="gen-text">Write my email</span>
+    </div>
+  </button>
+
+  <!-- Status toast -->
+  <div id="status"></div>
+
+  <!-- Result card -->
+  <div id="resultCard">
+    <div class="result-header">
+      <span class="result-title">Generated email</span>
+      <div class="result-actions">
+        <button class="icon-btn" id="regenerateBtn">↺ Regenerate</button>
+        <button class="icon-btn" id="copyBtn">Copy</button>
+      </div>
+    </div>
+    <div id="subjectRow">
+      <span class="subj-label">Subject</span>
+      <span id="subjectText"></span>
+      <button id="setSubjectBtn">Set</button>
+    </div>
+    <div id="previewBox"></div>
+    <button id="insertBtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+      Insert into email
+    </button>
+  </div>
+
+</main>
+
+<script>
+  let apiKey = '';
+  let generatedText = '';
+  let generatedSubject = '';
+  let selectedFormality = 'semi-formal';
+  let selectedMode = 'compose';
+  let originalEmailText = '';
+  let statusTimer = null;
+
+  Office.onReady(() => { loadKey(); loadSignature(); loadContext(); });
+
+  // ── Key management ──
+  function loadKey() {
+    try {
+      const saved = localStorage.getItem('claudeApiKey');
+      if (saved) { apiKey = saved; document.getElementById('apiSetup').style.display = 'none'; document.getElementById('generateBtn').disabled = false; }
+    } catch(e) {}
+  }
+  document.getElementById('saveKeyBtn').addEventListener('click', () => {
+    const val = document.getElementById('apiKeyInput').value.trim();
+    if (!val.startsWith('gsk_')) { showStatus('Enter a valid Groq key (starts with gsk_)', 'error'); return; }
+    apiKey = val;
+    try { localStorage.setItem('claudeApiKey', val); } catch(e) {}
+    document.getElementById('apiSetup').style.display = 'none';
+    document.getElementById('generateBtn').disabled = false;
+    showStatus('API key saved!', 'success');
+  });
+  document.getElementById('changeKeyBtn').addEventListener('click', () => {
+    try { localStorage.removeItem('claudeApiKey'); } catch(e) {}
+    apiKey = ''; document.getElementById('apiKeyInput').value = '';
+    document.getElementById('apiSetup').style.display = '';
+    document.getElementById('generateBtn').disabled = true;
+  });
+
+  // ── Mode tabs ──
+  document.querySelectorAll('.mode-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedMode = btn.dataset.mode;
+      const isReply = selectedMode === 'reply';
+      document.getElementById('replySection').style.display = isReply ? 'flex' : 'none';
+      document.getElementById('promptLabel').textContent = isReply ? 'How do you want to reply?' : 'What do you want to say?';
+      if (!isReply) { originalEmailText = ''; document.getElementById('originalEmailBox').style.display = 'none'; document.getElementById('originalEmailBox').textContent = ''; }
+    });
+  });
+
+  // ── Read original email ──
+  document.getElementById('readEmailBtn').addEventListener('click', () => {
+    Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text, result => {
+      if (result.status !== Office.AsyncResultStatus.Succeeded) { showStatus('Could not read email.', 'error'); return; }
+      const cleaned = (result.value || '').split('\n').filter(l => !l.trim().startsWith('>')).join('\n').trim();
+      originalEmailText = cleaned.substring(0, 3000);
+      const box = document.getElementById('originalEmailBox');
+      box.textContent = originalEmailText || '(empty)'; box.style.display = 'block';
+      showStatus('Original email loaded.', 'success');
+    });
+  });
+
+  // ── Formality ──
+  document.querySelectorAll('#formalityToggle .seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#formalityToggle .seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active'); selectedFormality = btn.dataset.formality;
+    });
+  });
+
+  // ── Accordions ──
+  [['ctxToggle','ctxBody','ctxChevron'],['sigToggle','sigBody','sigChevron']].forEach(([t,b,c]) => {
+    document.getElementById(t).addEventListener('click', () => {
+      document.getElementById(b).classList.toggle('open');
+      document.getElementById(c).classList.toggle('open');
+    });
+  });
+
+  // ── Context ──
+  function loadContext() {
+    try {
+      const ctx = localStorage.getItem('emailContext');
+      if (ctx) { document.getElementById('contextInput').value = ctx; document.getElementById('ctxDot').classList.add('on'); }
+    } catch(e) {}
+  }
+  document.getElementById('saveCtxBtn').addEventListener('click', () => {
+    const val = document.getElementById('contextInput').value;
+    try { localStorage.setItem('emailContext', val); } catch(e) {}
+    document.getElementById('ctxDot').classList.toggle('on', val.trim().length > 0);
+    showStatus('Context saved!', 'success');
+  });
+
+  // ── Signature ──
+  function loadSignature() {
+    try {
+      const sig = localStorage.getItem('emailSignature');
+      const cl  = localStorage.getItem('emailClosing');
+      if (sig) { document.getElementById('signatureInput').value = sig; document.getElementById('sigDot').classList.add('on'); }
+      if (cl)    document.getElementById('closingSelect').value = cl;
+    } catch(e) {}
+  }
+  document.getElementById('saveSigBtn').addEventListener('click', () => {
+    const sig = document.getElementById('signatureInput').value;
+    try { localStorage.setItem('emailSignature', sig); localStorage.setItem('emailClosing', document.getElementById('closingSelect').value); } catch(e) {}
+    document.getElementById('sigDot').classList.toggle('on', sig.trim().length > 0);
+    showStatus('Signature saved!', 'success');
+  });
+
+  // ── Quick chips ──
+  document.querySelectorAll('.quick-chip').forEach(btn => {
+    btn.addEventListener('click', () => { document.getElementById('promptInput').value = btn.dataset.prompt; document.getElementById('promptInput').focus(); });
+  });
+
+  // ── Generate ──
+  document.getElementById('generateBtn').addEventListener('click', generateEmail);
+  document.getElementById('regenerateBtn').addEventListener('click', generateEmail);
+
+  async function generateEmail() {
+    const prompt = document.getElementById('promptInput').value.trim();
+    if (!prompt) { showStatus('Please describe what you want to write.', 'error'); return; }
+    if (selectedMode === 'reply' && !originalEmailText) { showStatus('Click "Read original email" first.', 'error'); return; }
+
+    const lengthGuide = { short: '2-3 sentences maximum', medium: '1 short paragraph (4-6 sentences)', long: 'detailed, 2-3 paragraphs' }[document.getElementById('lengthSelect').value];
+    const formalityGuide = { formal: 'formal and professional, suitable for official or academic correspondence', 'semi-formal': 'semi-formal, polite and clear but not overly stiff', informal: 'informal and conversational, friendly and relaxed' }[selectedFormality];
+
+    const btn = document.getElementById('generateBtn');
+    btn.classList.add('loading'); btn.disabled = true;
+    hideStatus(); document.getElementById('resultCard').style.display = 'none';
+
+    try {
+      const res = await fetch('https://outlook-ai-email-writer.vercel.app/api/generate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey, prompt, tone: formalityGuide, lengthGuide, mode: selectedMode, originalEmail: originalEmailText || undefined, userContext: document.getElementById('contextInput').value.trim() || undefined })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `API error ${res.status}`);
+
+      const recipient = document.getElementById('recipientInput').value.trim();
+      const closing   = document.getElementById('closingSelect').value;
+      const signature = document.getElementById('signatureInput').value.trim();
+
+      let full = '';
+      if (recipient) full += `Dear ${recipient},\n\n`;
+      full += data.text.trim();
+      if (closing || signature) { full += `\n\n${closing},`; if (signature) full += `\n${signature}`; }
+
+      generatedText = full; generatedSubject = data.subject || '';
+
+      if (generatedSubject) { document.getElementById('subjectText').textContent = generatedSubject; document.getElementById('subjectRow').style.display = 'flex'; }
+      else document.getElementById('subjectRow').style.display = 'none';
+
+      document.getElementById('previewBox').textContent = generatedText;
+      document.getElementById('resultCard').style.display = 'flex';
+
+    } catch(err) { showStatus('Error: ' + err.message, 'error'); }
+    finally { btn.classList.remove('loading'); btn.disabled = false; }
+  }
+
+  // ── Set subject ──
+  document.getElementById('setSubjectBtn').addEventListener('click', () => {
+    if (!generatedSubject) return;
+    Office.context.mailbox.item.subject.setAsync(generatedSubject, r => showStatus(r.status === Office.AsyncResultStatus.Succeeded ? '✓ Subject set!' : 'Could not set subject.', r.status === Office.AsyncResultStatus.Succeeded ? 'success' : 'error'));
+  });
+
+  // ── Insert ──
+  document.getElementById('insertBtn').addEventListener('click', () => {
+    if (!generatedText) return;
+    Office.context.mailbox.item.body.getTypeAsync(result => {
+      if (result.status !== Office.AsyncResultStatus.Succeeded) { showStatus('Could not access email body.', 'error'); return; }
+      const isHtml = result.value === Office.MailboxEnums.BodyType.Html;
+      const content = isHtml ? generatedText.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>') : generatedText;
+      Office.context.mailbox.item.body.setAsync(content, { coercionType: isHtml ? Office.CoercionType.Html : Office.CoercionType.Text }, r => showStatus(r.status === Office.AsyncResultStatus.Succeeded ? '✓ Email inserted!' : 'Insert failed: ' + r.error.message, r.status === Office.AsyncResultStatus.Succeeded ? 'success' : 'error'));
+    });
+  });
+
+  // ── Copy ──
+  document.getElementById('copyBtn').addEventListener('click', () => navigator.clipboard.writeText(generatedText).then(() => showStatus('Copied!', 'success')));
+
+  // ── Status (auto-dismiss 3s) ──
+  function showStatus(msg, type) {
+    const el = document.getElementById('status');
+    el.textContent = msg; el.className = type;
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(() => { el.className = ''; }, 3000);
+  }
+  function hideStatus() { clearTimeout(statusTimer); document.getElementById('status').className = ''; }
+</script>
+</body>
+</html>
